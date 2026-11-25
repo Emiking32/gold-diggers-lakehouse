@@ -1,13 +1,13 @@
 """Gold point-in-time ML feature table skeleton for `gold_employee_churn_features`.
 
 TODO (Student Deliverable):
-- Grain: `emp_id` (leak-free snapshot cut at day 17 / Wave 1 to predict subsequent churn).
+- Grain: `emp_id` (leak-free snapshot cut at day 17 / Wave 1 so features can be trained/validated on the 200-day student dataset and evaluated out-of-time on the 70-day holdout).
 - Features (see `docs/STUDENT_ASSIGNMENT.md` Section 4.2.C & `docs/SANITY_CHECKS.md`):
   - `compa_ratio` (employee hourly rate / `(department, seniority_level)` peer median)
   - `tenure_years`, `months_since_promotion`, `work_mode`, `distance_km`, `manager_id`
   - Early average daily hours & weekend work counts from `silver_timesheets`
   - Wave 1 `enps_score` & `Q02`–`Q10` numeric scores
-  - Target `churned_within_quarter` (`0`/`1`)
+  - Target `churned_within_quarter` (`0`/`1`, churn label in the prediction horizon)
 - Write idempotently to `gold/gold_employee_churn_features` (Delta).
 """
 

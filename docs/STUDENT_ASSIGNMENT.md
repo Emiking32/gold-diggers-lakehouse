@@ -17,32 +17,44 @@ By the end of the project, your platform must:
 
 ## 2. Obtaining the Dataset
 
-A pre-generated 90-day corporate dataset (`2026-01-01` to `2026-03-31`, ~667,000 rows across 10 datasets) is provided for this course. You must download it to your local or containerized landing zone (`./data/landing`) before running your pipelines.
+A pre-generated **200-day corporate development dataset** (`2026-01-01` to `2026-07-19`, Days 1–200 across 10 datasets) is provided for this course via **Cloudflare R2**. An additional **70-day holdout slice** (`2026-07-20` to `2026-09-27`, Days 201–270) is reserved for final grading/defense to evaluate incremental ingestion, backfill idempotency on unseen daily drops, and out-of-time ML churn generalization.
 
-> **Instructor Configuration:** Replace the placeholder below with your course distribution method (LMS archive link, HTTP mirror, or S3/MinIO bucket).
+You must download and verify the 200-day dataset into your local landing zone (`./data/landing`) before running your pipelines.
 
-### Option A — Download & Extract Archive (HTTP / LMS)
+### Option A — Manifest-Driven Download from Cloudflare R2 (Recommended)
+1. Copy `.env.example` to `.env` and fill in the Cloudflare R2 credentials provided by your instructor:
+   ```dotenv
+   R2_ACCOUNT_ID=<YOUR_R2_ACCOUNT_ID>
+   R2_BUCKET_NAME=<YOUR_R2_BUCKET_NAME>
+   R2_PREFIX=course-2026
+   R2_STUDENT_ACCESS_KEY_ID=<YOUR_R2_STUDENT_ACCESS_KEY_ID>
+   R2_STUDENT_SECRET_ACCESS_KEY=<YOUR_R2_STUDENT_SECRET_ACCESS_KEY>
+   ```
+2. Run the automated downloader script, which reads `MANIFEST.sha256` under `R2_PREFIX`, downloads every archive listed in it, verifies SHA-256 checksums before unpacking, extracts the payload into `./data/landing`, and checks all 10 dataset folders:
+
+   ```bash
+   # macOS / Linux / Git Bash
+   ./scripts/download_data.sh
+   ```
+   ```powershell
+   # Windows (PowerShell)
+   .\scripts\download_data.ps1
+   ```
+
+### Option B — Direct HTTP Archive Override (Optional Mirror)
 ```bash
-mkdir -p ./data/landing
-curl -L "<DATASET_DOWNLOAD_URL>" -o ./data/landing_dataset.zip
-unzip ./data/landing_dataset.zip -d ./data/landing
-```
-
-### Option B — Sync from Course S3 / MinIO Bucket
-```bash
-aws s3 sync s3://<COURSE_BUCKET>/landing ./data/landing \
-  --endpoint-url "<S3_OR_MINIO_ENDPOINT_URL>"
+./scripts/download_data.sh --url "<DATASET_DOWNLOAD_URL>"
 ```
 
 ### Verify Your Download
-After downloading, confirm that `./data/landing` contains all 10 source folders (`clients`, `projects`, `survey_questions`, `employees`, `timesheets`, `fx_rates`, `invoices`, `expenses`, `crm_events`, `employee_surveys`):
+You can re-verify checksums and all 10 required folders (`clients`, `projects`, `survey_questions`, `employees`, `timesheets`, `fx_rates`, `invoices`, `expenses`, `crm_events`, `employee_surveys`) at any time without re-downloading:
 
 ```bash
-ls -la ./data/landing
+./scripts/download_data.sh --verify-only
 ```
 
-- **Do not commit the downloaded `./data/` folder to Git** — include `data/` in your `.gitignore` and provide a script/Make target or Airflow ingestion task that pulls or reads from the configured landing path.
-- For rapid local iteration and unit tests, you may process a shorter date slice (e.g., `2026-01-01` to `2026-01-14`), but your final pipeline and reporting layer must be validated on the full **90-day** dataset.
+- **Do not commit the downloaded `./data/` folder or `.env` credentials to Git** — both are listed in `.gitignore`.
+- For rapid local iteration and unit tests, iterate on a shorter 14-day slice (`2026-01-01` to `2026-01-14`), then validate your full pipeline and reporting layer on the complete **200-day** student dataset. Design all ingestion and transformation jobs incrementally so your pipeline can seamlessly process the **70-day holdout** (`2026-07-20` to `2026-09-27`) during evaluation.
 
 ---
 
@@ -82,8 +94,8 @@ data/landing/
 | **`timesheets`** | Parquet (Daily Batch) | `ts_id` (`string`), `emp_id` (`string`, FK → `employees`), `project_id` (`string`, nullable FK → `projects`), `work_date` (`date`), `hours` (`double`). |
 
 > **Operational Notes (HR):**
-> - Roughly 10% of employees change `department`, `role`, and/or `hourly_rate_eur` during the quarter, requiring SCD Type 2 tracking for accurate historical labor cost attribution.
-> - Employee departures occur throughout the quarter (`is_active` transitions to `false` and `termination_date` is populated from the departure date onward).
+> - Roughly 10% of employees change `department`, `role`, and/or `hourly_rate_eur` across the 200-day development period (and into the 70-day holdout), requiring SCD Type 2 tracking for accurate historical labor cost attribution.
+> - Employee departures occur throughout the 200-day development period and the 70-day holdout (`is_active` transitions to `false` and `termination_date` is populated from the departure date onward).
 
 ### 3.3 Employee eNPS Surveys Domain
 
@@ -176,8 +188,8 @@ Create at least the following **5 Gold tables**:
    - Grain: `(department, seniority_level, work_mode, survey_wave)`.
    - Metrics: `respondent_count`, `enps_score` (`% Promoters − % Detractors`), average score per driver (`Q02`–`Q10`), `voluntary_attrition_rate`, `involuntary_attrition_rate`.
 5. **`gold_employee_churn_features` (Point-in-Time ML Feature Table):**
-   - Grain: `emp_id` (leak-free snapshot cut at day 17 / Wave 1 to predict subsequent churn).
-   - Features: `compa_ratio` (employee hourly rate ÷ `(department, seniority_level)` peer median), `tenure_years`, `months_since_promotion`, `work_mode`, `distance_km`, `manager_id`, early average daily hours & weekend work counts from `timesheets`, Wave 1 `enps_score` & `Q02–Q10` numeric scores, and future target `churned_within_quarter` (`0/1`).
+   - Grain: `emp_id` (leak-free snapshot cut at day 17 / Wave 1 so features can be trained/validated on the 200-day student dataset and evaluated out-of-time on the 70-day holdout).
+   - Features: `compa_ratio` (employee hourly rate ÷ `(department, seniority_level)` peer median), `tenure_years`, `months_since_promotion`, `work_mode`, `distance_km`, `manager_id`, early average daily hours & weekend work counts from `timesheets`, Wave 1 `enps_score` & `Q02–Q10` numeric scores, and future target `churned_within_quarter` (`0/1`, target label for subsequent churn in the prediction horizon).
 
 ---
 
@@ -235,7 +247,9 @@ Submit a Git repository containing:
 project-root/
 ├── docker-compose.yml          # Reproducible local stack (Spark, Airflow, Reporting UI)
 ├── scripts/
-│   └── download_data.sh        # Automated script to download & verify the Landing Zone
+│   ├── download_data.py        # Manifest-driven Cloudflare R2 downloader & verifier
+│   ├── download_data.sh        # Automated Linux/macOS wrapper
+│   └── download_data.ps1       # Automated Windows PowerShell wrapper
 ├── dags/                       # Orchestration DAG definitions
 ├── spark_jobs/
 │   ├── bronze/
@@ -258,7 +272,7 @@ project-root/
 | :--- | :---: | :--- |
 | **PySpark Medallion Pipelines (Bronze / Silver / Gold)** | **35 pts** | Correct schemas, true SCD Type 2 & point-in-time cost joins, weekend FX forward-fill, credit note handling, skew optimization with Spark UI proof. |
 | **Data Quality Framework & Quarantine** | **20 pts** | Comprehensive hard/soft rules, zero silent data loss, quarantine tables with failure reasons, persisted `dq_audit_results`. |
-| **Orchestration & Idempotency** | **20 pts** | Clean Airflow/orchestrator DAG, parameterized `batch_date` runs, verified backfill & re-run idempotency, retry/failure handling. |
+| **Orchestration & Idempotency** | **20 pts** | Clean Airflow/orchestrator DAG, parameterized `batch_date` runs, verified backfill & re-run idempotency (including readiness for the 70-day evaluation holdout), retry/failure handling. |
 | **Reporting Layer** | **15 pts** | Reads strictly from Gold/DQ tables, all 4 required business & DQ views functional, clear KPI definitions and filters. |
 | **Code Quality, Tests & Documentation** | **10 pts** | Modular code, PySpark unit tests, automated download script, reproducible setup (`docker-compose` / `uv`), clear architecture notes. |
 | **Bonus — Predictive Churn / NLP Analytics** | **+10 pts** | Train a Spark MLlib or scikit-learn churn model on `gold_employee_churn_features` (report ROC-AUC & top feature importances) **or** run sentiment/topic extraction on `written_answer` texts and surface insights in the HR dashboard. |

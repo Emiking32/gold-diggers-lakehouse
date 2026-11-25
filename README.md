@@ -21,8 +21,9 @@ spark-lakehouse-starter/
 ├── pyproject.toml                # Python dependency specification & pytest/ruff config
 ├── .env.example                  # Environment variable template
 ├── scripts/
-│   ├── download_data.sh          # Linux/macOS dataset download & verification script
-│   └── download_data.ps1         # Windows PowerShell dataset download & verification script
+│   ├── download_data.py          # Manifest-driven Cloudflare R2 downloader & verifier
+│   ├── download_data.sh          # Linux/macOS wrapper (uses uv / python3 / docker)
+│   └── download_data.ps1         # Windows PowerShell wrapper (uses uv / python / docker)
 ├── dags/
 │   └── medallion_daily_dag.py    # Parameterized Airflow DAG (`clients` wired + TODO tasks)
 ├── spark_jobs/
@@ -38,7 +39,8 @@ spark-lakehouse-starter/
 │   └── app.py                    # Streamlit Home status page + 4 TODO view tabs
 ├── tests/
 │   ├── conftest.py               # PySpark local session fixture
-│   └── test_clients_pipeline.py  # Working tests for reference `clients` Bronze/Silver & DQ audit
+│   ├── test_clients_pipeline.py  # Working tests for reference `clients` Bronze/Silver & DQ audit
+│   └── test_download_data.py     # Unit tests for manifest-driven R2 downloader & verification
 └── docs/
     ├── STUDENT_ASSIGNMENT.md
     ├── SANITY_CHECKS.md
@@ -64,19 +66,21 @@ docker compose up -d --build
 *(To also start a local S3-compatible MinIO server, run `docker compose --profile minio up -d --build`.)*
 
 ### 3. Download & Verify the Landing Dataset
-Use the link or S3/MinIO bucket provided by your instructor:
+The course dataset contains **200 development days** (`2026-01-01` – `2026-07-19`) distributed via **Cloudflare R2** using a SHA-256 manifest (`MANIFEST.sha256`) under `R2_PREFIX=course-2026`. *(An additional **70-day holdout**, `2026-07-20` – `2026-09-27`, is reserved for final grading and out-of-time evaluation.)*
+
+Fill in the `R2_*` variables provided by your instructor in `.env`, then run:
 
 **macOS / Linux / Git Bash:**
 ```bash
-./scripts/download_data.sh --url "<DATASET_DOWNLOAD_URL>"
+./scripts/download_data.sh
 ```
 
 **Windows (PowerShell):**
 ```powershell
-.\scripts\download_data.ps1 -Url "<DATASET_DOWNLOAD_URL>"
+.\scripts\download_data.ps1
 ```
 
-*(Both scripts also support `--s3-bucket` / `-S3Bucket` and `--endpoint-url` / `-EndpointUrl`, verify `MANIFEST.sha256` if present, and confirm all 10 dataset folders exist under `./data/landing`.)*
+*(Both wrappers invoke `scripts/download_data.py`, which reads `MANIFEST.sha256` from Cloudflare R2, downloads and SHA-256-verifies the listed archive before extracting it into `./data/landing`, and checks all 10 required dataset folders. Pass `--verify-only` / `-VerifyOnly` to re-verify locally without downloading, or `--url` / `-Url` for a direct HTTP mirror.)*
 
 ### 4. Run the Reference `clients` Mini-Pipeline
 ```bash
@@ -115,7 +119,7 @@ docker compose run --rm spark-master pytest -v
 
 ### Provided in Starter
 - Dockerized **Spark 3.5.5 + Delta Lake 3.3.0 + Airflow 2.10.5 + DuckDB/Streamlit** environment (with JARs pre-baked for offline execution)
-- Dataset download & verification scripts (`scripts/download_data.sh` & `.ps1`)
+- Manifest-driven Cloudflare R2 dataset download & verification scripts (`scripts/download_data.{py,sh,ps1}`)
 - Shared `SparkSession` builder (`spark_jobs/common/spark_session.py`)
 - Reference Bronze → Silver mini-pipeline for **`clients`** (`ingest_clients.py` & `transform_clients.py`), `dq_audit_results` schema/writer (`dq/framework.py`), and unit tests (`tests/test_clients_pipeline.py`)
 - Parameterized Airflow DAG skeleton (`dags/medallion_daily_dag.py`) and Streamlit overview skeleton (`reporting/app.py`)
