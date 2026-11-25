@@ -3,7 +3,7 @@ name = "spark-lakehouse-starter"
 version = "0.1.0"
 description = "Starter repository for the CorpTech Enterprise Lakehouse & Medallion Pipeline course project."
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11,<3.13"
 dependencies = [
     "pyspark==3.5.5",
     "delta-spark==3.3.0",

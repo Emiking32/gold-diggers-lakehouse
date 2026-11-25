@@ -50,11 +50,7 @@ def ingest_clients(
     source_path = join_path(resolved_landing, "clients", "clients.csv")
     target_path = join_path(resolved_lakehouse, "bronze", "clients")
 
-    raw_df = (
-        spark.read.option("header", "true")
-        .schema(CLIENTS_RAW_SCHEMA)
-        .csv(source_path)
-    )
+    raw_df = spark.read.option("header", "true").schema(CLIENTS_RAW_SCHEMA).csv(source_path)
 
     bronze_df = (
         raw_df.withColumn("_batch_date", F.to_date(F.lit(batch_date)))

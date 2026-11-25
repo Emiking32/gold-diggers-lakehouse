@@ -22,9 +22,16 @@ from pyspark.sql import SparkSession
 from spark_jobs.common.spark_session import get_spark_session
 
 
-def run(spark: SparkSession, batch_date: str, lakehouse_root: str | None = None, run_id: str | None = None) -> None:
+def run(
+    spark: SparkSession,
+    batch_date: str,
+    lakehouse_root: str | None = None,
+    run_id: str | None = None,
+) -> None:
     """TODO: Build `silver/silver_crm_events` with documented skew mitigation."""
-    raise NotImplementedError("TODO: Implement Silver CRM events transformation with skew mitigation.")
+    raise NotImplementedError(
+        "TODO: Implement Silver CRM events transformation with skew mitigation."
+    )
 
 
 def parse_args() -> argparse.Namespace:

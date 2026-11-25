@@ -22,7 +22,12 @@ from pyspark.sql import SparkSession
 from spark_jobs.common.spark_session import get_spark_session
 
 
-def run(spark: SparkSession, batch_date: str, landing_root: str | None = None, lakehouse_root: str | None = None) -> None:
+def run(
+    spark: SparkSession,
+    batch_date: str,
+    landing_root: str | None = None,
+    lakehouse_root: str | None = None,
+) -> None:
     """TODO: Implement Bronze ingestion for `crm_events` and `employee_surveys`."""
     raise NotImplementedError("TODO: Implement Bronze CRM & Surveys ingestion.")
 

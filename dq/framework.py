@@ -174,5 +174,7 @@ def enforce_dq_gate(results: Sequence[DQCheckResult]) -> None:
             logger.info(msg)
 
     if hard_failures:
-        summary = ", ".join(f"{r.table_name}.{r.check_name} ({r.failed_count})" for r in hard_failures)
+        summary = ", ".join(
+            f"{r.table_name}.{r.check_name} ({r.failed_count})" for r in hard_failures
+        )
         raise DQGateFailedError(f"Hard DQ gate failed: {summary}")
