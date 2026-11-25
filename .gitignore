@@ -221,3 +221,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Lakehouse Starter Project
+data/
+lakehouse/
+warehouse/
+spark-warehouse/
+metastore_db/
+derby.log
+logs/
+*.parquet
+.env
+.venv/
+__pycache__/
+HANDOFF_PROMPT.md
+
