@@ -94,9 +94,7 @@ def transform_clients(
 
     # Write quarantine table idempotently by `_batch_date`.
     if DeltaTable.isDeltaTable(spark, quarantine_path):
-        DeltaTable.forPath(spark, quarantine_path).delete(
-            f"_batch_date = DATE '{batch_date}'"
-        )
+        DeltaTable.forPath(spark, quarantine_path).delete(f"_batch_date = DATE '{batch_date}'")
         if not quarantine_df.isEmpty():
             (
                 quarantine_df.write.format("delta")

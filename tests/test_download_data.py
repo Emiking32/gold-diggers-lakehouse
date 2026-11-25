@@ -31,11 +31,7 @@ class _FakeR2Client:
         return {"Body": io.BytesIO(self._objects[Key])}
 
     def list_objects_v2(self, Bucket: str, Prefix: str) -> dict[str, list[dict[str, str]]]:  # noqa: N803
-        contents = [
-            {"Key": key}
-            for key in sorted(self._objects)
-            if key.startswith(Prefix)
-        ]
+        contents = [{"Key": key} for key in sorted(self._objects) if key.startswith(Prefix)]
         return {"Contents": contents}
 
     def download_file(self, Bucket: str, Key: str, Filename: str) -> None:  # noqa: N803

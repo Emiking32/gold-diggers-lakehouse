@@ -19,7 +19,12 @@ from pyspark.sql import SparkSession
 from spark_jobs.common.spark_session import get_spark_session
 
 
-def run(spark: SparkSession, batch_date: str, lakehouse_root: str | None = None, run_id: str | None = None) -> None:
+def run(
+    spark: SparkSession,
+    batch_date: str,
+    lakehouse_root: str | None = None,
+    run_id: str | None = None,
+) -> None:
     """TODO: Build `gold/gold_hr_enps_analytics`."""
     raise NotImplementedError("TODO: Implement gold_hr_enps_analytics.")
 

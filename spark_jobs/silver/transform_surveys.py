@@ -1,4 +1,4 @@
-"""Silver transformation & quarantine skeleton for `silver_survey_responses` and `silver_survey_answers`.
+"""Silver transformation & quarantine skeleton for survey responses and exploded answers.
 
 TODO (Student Deliverable):
 1. Deduplicate survey submissions by `survey_id`.
@@ -22,13 +22,20 @@ from pyspark.sql import SparkSession
 from spark_jobs.common.spark_session import get_spark_session
 
 
-def run(spark: SparkSession, batch_date: str, lakehouse_root: str | None = None, run_id: str | None = None) -> None:
+def run(
+    spark: SparkSession,
+    batch_date: str,
+    lakehouse_root: str | None = None,
+    run_id: str | None = None,
+) -> None:
     """TODO: Build `silver/silver_survey_responses` and `silver/silver_survey_answers`."""
     raise NotImplementedError("TODO: Implement Silver survey transformation.")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Build silver_survey_responses and silver_survey_answers.")
+    parser = argparse.ArgumentParser(
+        description="Build silver_survey_responses and silver_survey_answers."
+    )
     parser.add_argument("--batch-date", required=True, help="Logical batch date (YYYY-MM-DD).")
     parser.add_argument("--lakehouse-root", default=None, help="Override Lakehouse root path.")
     parser.add_argument("--run-id", default=None, help="Orchestrator run identifier.")

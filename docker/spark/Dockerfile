@@ -35,11 +35,11 @@ RUN mkdir -p /opt/spark/conf && \
       echo "spark.driver.bindAddress                 0.0.0.0"; \
     } > /opt/spark/conf/spark-defaults.conf
 
-RUN mkdir -p /opt/workspace /opt/workspace/lakehouse/spark-events
+RUN mkdir -p /opt/workspace /opt/workspace/lakehouse/spark-events && \
+    chown -R spark:root /opt/workspace
 WORKDIR /opt/workspace
 
 ENV SPARK_HOME=/opt/spark
 ENV PYTHONPATH=/opt/workspace
 
-# Keep root in local course containers to avoid host bind-mount permission errors on Linux/WSL.
-USER root
+USER spark

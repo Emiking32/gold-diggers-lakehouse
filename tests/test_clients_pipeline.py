@@ -55,12 +55,21 @@ def test_ingest_clients_bronze_metadata_and_idempotency(spark, tmp_path: Path) -
 
     assert bronze_df.count() == 3
     assert {"_batch_date", "_ingested_at", "_source_file"}.issubset(set(bronze_df.columns))
-    assert bronze_df.filter("_batch_date IS NULL OR _ingested_at IS NULL OR _source_file IS NULL").count() == 0
-    batch_dates = {row["_batch_date"] for row in bronze_df.select("_batch_date").distinct().collect()}
+    assert (
+        bronze_df.filter(
+            "_batch_date IS NULL OR _ingested_at IS NULL OR _source_file IS NULL"
+        ).count()
+        == 0
+    )
+    batch_dates = {
+        row["_batch_date"] for row in bronze_df.select("_batch_date").distinct().collect()
+    }
     assert batch_dates == {date(2026, 1, 1)}
 
 
-def test_transform_clients_silver_quarantine_dq_audit_and_idempotency(spark, tmp_path: Path) -> None:
+def test_transform_clients_silver_quarantine_dq_audit_and_idempotency(
+    spark, tmp_path: Path
+) -> None:
     landing_root = tmp_path / "landing"
     lakehouse_root = tmp_path / "lakehouse"
     _write_clients_csv(
@@ -105,7 +114,9 @@ def test_transform_clients_silver_quarantine_dq_audit_and_idempotency(spark, tmp
     )
 
     # Valid rows: trimmed & cleansed.
-    silver_rows = {row["client_id"]: (row["client_name"], row["tier"]) for row in silver_df.collect()}
+    silver_rows = {
+        row["client_id"]: (row["client_name"], row["tier"]) for row in silver_df.collect()
+    }
     assert silver_rows == {
         "VIP_CORP_001": ("VIP Corporation", "Enterprise"),
         "CLI_0002": ("Acme Industries", "Gold"),

@@ -7,7 +7,7 @@
 ## 1. Prerequisites & Environment Setup
 
 - **Required:** Docker Desktop (with Docker Compose v2)
-- **Optional (local linting / IDE support):** [`uv`](https://docs.astral.sh/uv/) (Python 3.10–3.12)
+- **Optional (local linting / IDE support):** [`uv`](https://docs.astral.sh/uv/) (Python 3.11–3.12)
 
 1. Create your local environment file from the template:
    ```bash

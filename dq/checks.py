@@ -66,7 +66,7 @@ def check_zero_null_eur(
     table_name: str,
     severity: str = "ERROR",
 ) -> DQCheckResult:
-    """TODO: Verify zero NULL EUR amounts after FX conversion (`silver_invoices`, `silver_expenses`)."""
+    """TODO: Verify zero NULL EUR amounts after FX conversion (invoices & expenses)."""
     raise NotImplementedError("TODO: Implement check_zero_null_eur in dq/checks.py")
 
 

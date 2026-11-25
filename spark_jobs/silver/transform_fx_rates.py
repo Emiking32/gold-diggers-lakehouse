@@ -19,7 +19,12 @@ from pyspark.sql import SparkSession
 from spark_jobs.common.spark_session import get_spark_session
 
 
-def run(spark: SparkSession, batch_date: str, lakehouse_root: str | None = None, run_id: str | None = None) -> None:
+def run(
+    spark: SparkSession,
+    batch_date: str,
+    lakehouse_root: str | None = None,
+    run_id: str | None = None,
+) -> None:
     """TODO: Build `silver/silver_fx_rates_daily` using calendar spine + LOCF."""
     raise NotImplementedError("TODO: Implement Silver FX rates forward-fill transformation.")
 

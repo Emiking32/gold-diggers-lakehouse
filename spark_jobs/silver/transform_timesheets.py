@@ -24,13 +24,20 @@ from pyspark.sql import SparkSession
 from spark_jobs.common.spark_session import get_spark_session
 
 
-def run(spark: SparkSession, batch_date: str, lakehouse_root: str | None = None, run_id: str | None = None) -> None:
+def run(
+    spark: SparkSession,
+    batch_date: str,
+    lakehouse_root: str | None = None,
+    run_id: str | None = None,
+) -> None:
     """TODO: Build `silver/silver_timesheets` and `silver_quarantine/timesheets`."""
     raise NotImplementedError("TODO: Implement Silver transformation for timesheets.")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Transform bronze/timesheets into silver_timesheets.")
+    parser = argparse.ArgumentParser(
+        description="Transform bronze/timesheets into silver_timesheets."
+    )
     parser.add_argument("--batch-date", required=True, help="Logical batch date (YYYY-MM-DD).")
     parser.add_argument("--lakehouse-root", default=None, help="Override Lakehouse root path.")
     parser.add_argument("--run-id", default=None, help="Orchestrator run identifier.")

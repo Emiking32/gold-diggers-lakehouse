@@ -1,13 +1,18 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-RUN pip install --no-cache-dir \
+RUN useradd --create-home --shell /bin/bash appuser && \
+    pip install --no-cache-dir \
       "streamlit>=1.39.0" \
       "duckdb>=1.1.0" \
       "pandas>=2.2.0" \
       "pyarrow>=17.0.0" \
-      "plotly>=5.24.0"
+      "plotly>=5.24.0" && \
+    mkdir -p /opt/workspace && \
+    chown -R appuser:appuser /opt/workspace
 
-# Pre-install the DuckDB Delta extension during image build so the UI works offline.
+USER appuser
+
+# Pre-install the DuckDB Delta extension as appuser so the UI works offline.
 RUN python -c "import duckdb; duckdb.sql('INSTALL delta; LOAD delta;')"
 
 WORKDIR /opt/workspace

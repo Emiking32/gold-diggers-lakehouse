@@ -1,7 +1,8 @@
 """Gold point-in-time ML feature table skeleton for `gold_employee_churn_features`.
 
 TODO (Student Deliverable):
-- Grain: `emp_id` (leak-free snapshot cut at day 17 / Wave 1 so features can be trained/validated on the 200-day student dataset and evaluated out-of-time on the 70-day holdout).
+- Grain: `emp_id` (leak-free snapshot cut at day 17 / Wave 1 so features can be trained/validated
+  on the 200-day student dataset and evaluated out-of-time on the 70-day holdout).
 - Features (see `docs/STUDENT_ASSIGNMENT.md` Section 4.2.C & `docs/SANITY_CHECKS.md`):
   - `compa_ratio` (employee hourly rate / `(department, seniority_level)` peer median)
   - `tenure_years`, `months_since_promotion`, `work_mode`, `distance_km`, `manager_id`
@@ -20,7 +21,12 @@ from pyspark.sql import SparkSession
 from spark_jobs.common.spark_session import get_spark_session
 
 
-def run(spark: SparkSession, batch_date: str, lakehouse_root: str | None = None, run_id: str | None = None) -> None:
+def run(
+    spark: SparkSession,
+    batch_date: str,
+    lakehouse_root: str | None = None,
+    run_id: str | None = None,
+) -> None:
     """TODO: Build `gold/gold_employee_churn_features`."""
     raise NotImplementedError("TODO: Implement gold_employee_churn_features.")
 
