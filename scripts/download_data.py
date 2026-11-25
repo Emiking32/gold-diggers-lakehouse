@@ -383,7 +383,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--r2-prefix",
         default=None,
-        help="Cloudflare R2 prefix containing MANIFEST.sha256 (default: $R2_PREFIX or course-2026).",
+        help="R2 prefix containing MANIFEST.sha256 (default: $R2_PREFIX or course-2026).",
     )
     parser.add_argument("--r2-access-key", default=None, help="Cloudflare R2 access key ID.")
     parser.add_argument("--r2-secret-key", default=None, help="Cloudflare R2 secret access key.")
@@ -417,9 +417,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.verify_only:
         if not args.force and all_folders_populated(dest):
-            print(f"INFO: All 10 dataset folders already exist in {dest}. Use --force to re-download.")
+            print(
+                f"INFO: All 10 dataset folders already exist in {dest}. Use --force to re-download."
+            )
         else:
-            url = args.url if args.url is not None else os.getenv("DATASET_DOWNLOAD_URL", "").strip()
+            url = (
+                args.url if args.url is not None else os.getenv("DATASET_DOWNLOAD_URL", "").strip()
+            )
             account_id = (args.r2_account_id or os.getenv("R2_ACCOUNT_ID", "")).strip()
             bucket = (args.r2_bucket or os.getenv("R2_BUCKET_NAME", "")).strip()
             prefix = (
@@ -427,9 +431,7 @@ def main(argv: list[str] | None = None) -> int:
                 if args.r2_prefix is not None
                 else os.getenv("R2_PREFIX", "course-2026")
             ).strip()
-            access_key = (
-                args.r2_access_key or os.getenv("R2_STUDENT_ACCESS_KEY_ID", "")
-            ).strip()
+            access_key = (args.r2_access_key or os.getenv("R2_STUDENT_ACCESS_KEY_ID", "")).strip()
             secret_key = (
                 args.r2_secret_key or os.getenv("R2_STUDENT_SECRET_ACCESS_KEY", "")
             ).strip()

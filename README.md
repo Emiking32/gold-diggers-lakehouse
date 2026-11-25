@@ -13,12 +13,16 @@ Student starter repository for the **Apache Spark Lakehouse & Medallion Architec
 
 ```text
 spark-lakehouse-starter/
+├── .github/workflows/ci.yml      # Out-of-the-box CI & security workflow (uv, pytest, Gitleaks, Semgrep, Trivy)
+├── .gitleaks.toml                # Gitleaks secret scan configuration
+├── .semgrepignore                # Semgrep OSS exclusion list
 ├── docker/
 │   ├── airflow/Dockerfile        # Airflow 2.10.5 (LocalExecutor) + PySpark 3.5.5 + Delta JARs
 │   ├── reporting/Dockerfile      # Streamlit + DuckDB (with pre-installed delta extension)
 │   └── spark/Dockerfile          # Spark 3.5.5 + Delta Lake 3.3.0 + Hadoop-AWS 3.3.4 JARs
 ├── docker-compose.yml            # Reproducible stack (+ optional --profile minio)
 ├── pyproject.toml                # Python dependency specification & pytest/ruff config
+├── uv.lock                       # Reproducible dependency lockfile
 ├── .env.example                  # Environment variable template
 ├── scripts/
 │   ├── download_data.py          # Manifest-driven Cloudflare R2 downloader & verifier
@@ -98,6 +102,27 @@ docker compose exec spark-master spark-submit \
 ### 5. Run Unit Tests
 ```bash
 docker compose run --rm spark-master pytest -v
+```
+
+---
+
+## CI & Security Checks
+
+An out-of-the-box GitHub Actions workflow ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)) runs automatically on pushes and pull requests to `main` and `develop` without requiring paid tokens or external SaaS licenses:
+
+| Job | Checks |
+| :--- | :--- |
+| **`lint-and-uv`** | `uv lock --check`, `uv sync --frozen --dev`, `ruff check .`, `ruff format --check .`, `bash -n scripts/download_data.sh`, `docker compose config --quiet` |
+| **`unit-tests`** | `uv run pytest -v` on Python 3.11 + Temurin Java 17 |
+| **`gitleaks`** | Full Git history secret scan via OSS Gitleaks binary ([`.gitleaks.toml`](./.gitleaks.toml)) |
+| **`semgrep`** | OSS SAST across Python, Dockerfiles, Compose, and secrets (`semgrep scan`) |
+| **`trivy`** | `CRITICAL,HIGH` vulnerability, secret, and Dockerfile/Compose IaC scans (`aquasecurity/trivy-action`) |
+
+Run the local `uv` and Ruff checks before committing:
+```bash
+uv lock --check
+uv run --no-project --with ruff ruff check .
+uv run --no-project --with ruff ruff format --check .
 ```
 
 ---

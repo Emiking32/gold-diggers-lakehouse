@@ -87,7 +87,7 @@ with DAG(
             task_id="transform_clients",
             bash_command=(
                 'spark-submit --master "${SPARK_MASTER_URL:-spark://spark-master:7077}" '
-                '/opt/workspace/spark_jobs/silver/transform_clients.py '
+                "/opt/workspace/spark_jobs/silver/transform_clients.py "
                 '--batch-date "{{ ds }}" --run-id "{{ run_id }}"'
             ),
         )
@@ -105,7 +105,7 @@ with DAG(
         transform_fx_rates_todo >> transform_invoices_expenses_todo
         transform_clients >> transform_crm_events_todo
 
-    # TODO: Wire Silver DQ gate (SCD2 no-overlap check, zero NULL EUR amounts, quarantine warn ratio).
+    # TODO: Wire Silver DQ gate (SCD2 no-overlap, zero NULL EUR amounts, quarantine warn ratio).
     dq_silver_gate = EmptyOperator(task_id="dq_silver_gate")
 
     with TaskGroup(group_id="gold_marts") as gold_marts:
