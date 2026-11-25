@@ -1,6 +1,6 @@
 # 14-Day Data Sanity Checks & KPI Formula Glossary
 
-Use this reference to verify your Bronze ingestion and Silver data-quality logic on the initial **14-day slice (`2026-01-01` through `2026-01-14`)** before scaling up to the full 90-day backfill.
+Use this reference to verify your Bronze ingestion and Silver data-quality logic on the initial **14-day slice (`2026-01-01` through `2026-01-14`)** before scaling up to the full **200-day** backfill (`2026-01-01` – `2026-07-19`) and final evaluation on the **70-day holdout** (`2026-07-20` – `2026-09-27`).
 
 ---
 

@@ -33,13 +33,15 @@
 
 ## 2. Downloading & Verifying the Landing Dataset
 
+Configure the Cloudflare R2 credentials provided by your instructor in `.env` (`R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_PREFIX=course-2026`, `R2_STUDENT_ACCESS_KEY_ID`, `R2_STUDENT_SECRET_ACCESS_KEY`). The downloader reads `MANIFEST.sha256` under `R2_PREFIX`, downloads and verifies the ZIP archive, and extracts the 200-day dataset (`2026-01-01` – `2026-07-19`) into `./data/landing`.
+
 ### macOS / Linux / Git Bash
 ```bash
-# Option A: HTTP Archive
-./scripts/download_data.sh --url "<DATASET_DOWNLOAD_URL>"
+# Download & verify using MANIFEST.sha256 from Cloudflare R2 (.env)
+./scripts/download_data.sh
 
-# Option B: S3 / MinIO Sync
-./scripts/download_data.sh --s3-bucket "<COURSE_BUCKET>" --endpoint-url "<S3_OR_MINIO_ENDPOINT_URL>"
+# Force re-download if ./data/landing already exists
+./scripts/download_data.sh --force
 
 # Verify existing ./data/landing without re-downloading
 ./scripts/download_data.sh --verify-only
@@ -47,14 +49,19 @@
 
 ### Windows (PowerShell)
 ```powershell
-# Option A: HTTP Archive
-.\scripts\download_data.ps1 -Url "<DATASET_DOWNLOAD_URL>"
+# Download & verify using MANIFEST.sha256 from Cloudflare R2 (.env)
+.\scripts\download_data.ps1
 
-# Option B: S3 / MinIO Sync
-.\scripts\download_data.ps1 -S3Bucket "<COURSE_BUCKET>" -EndpointUrl "<S3_OR_MINIO_ENDPOINT_URL>"
+# Force re-download if .\data\landing already exists
+.\scripts\download_data.ps1 -Force
 
 # Verify existing .\data\landing without re-downloading
 .\scripts\download_data.ps1 -VerifyOnly
+```
+
+### Inside the Spark Container (no local Python/uv required)
+```bash
+docker compose run --rm spark-master python3 /opt/workspace/scripts/download_data.py
 ```
 
 ---
@@ -94,11 +101,11 @@ docker compose run --rm spark-master pytest -v
 # Trigger a single batch date
 docker compose exec airflow-scheduler airflow dags trigger medallion_daily_pipeline --logical-date 2026-01-01
 
-# TODO: Document your verified 14-day slice and full 90-day backfill commands below:
+# TODO: Document your verified 14-day slice (`2026-01-01` to `2026-01-14`) and full 200-day backfill (`2026-01-01` to `2026-07-19`) commands below, and ensure incremental runs remain ready for the 70-day holdout (`2026-07-20` to `2026-09-27`):
 # docker compose exec airflow-scheduler airflow dags backfill ...
 ```
 
-<!-- TODO: Document how long the 14-day slice and 90-day backfill took, and any concurrency/pool settings you tuned. -->
+<!-- TODO: Document how long the 14-day slice and 200-day backfill took, and any concurrency/pool settings you tuned. -->
 
 ---
 
