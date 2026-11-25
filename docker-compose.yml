@@ -19,8 +19,6 @@ x-spark-env: &spark-env
   PYTHONPATH: /opt/workspace
 
 x-airflow-common: &airflow-common
-  build:
-    context: ./docker/airflow
   image: spark-lakehouse-airflow:2.10.5
   environment:
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -78,8 +76,6 @@ services:
     restart: unless-stopped
 
   spark-worker:
-    build:
-      context: ./docker/spark
     image: spark-lakehouse-spark:3.5.5
     depends_on:
       - spark-master
@@ -99,8 +95,6 @@ services:
     restart: unless-stopped
 
   spark-history:
-    build:
-      context: ./docker/spark
     image: spark-lakehouse-spark:3.5.5
     command:
       - bash
@@ -117,6 +111,8 @@ services:
 
   airflow-init:
     <<: *airflow-common
+    build:
+      context: ./docker/airflow
     depends_on:
       postgres:
         condition: service_healthy
