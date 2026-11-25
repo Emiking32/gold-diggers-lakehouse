@@ -22,13 +22,12 @@ RUN curl -fsSL -o /opt/spark/jars/delta-spark_2.12-${DELTA_VERSION}.jar \
       "https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/${AWS_SDK_VERSION}/aws-java-sdk-bundle-${AWS_SDK_VERSION}.jar"
 
 # Install delta-spark (--no-deps to keep /opt/spark as the single Spark/JAR source of truth) + pytest.
-RUN pip3 install --no-cache-dir \
-      "delta-spark==${DELTA_VERSION}" --no-deps \
-      importlib-metadata \
-      "pytest>=8.0.0" && \
+RUN pip3 install --no-cache-dir --no-deps "delta-spark==${DELTA_VERSION}" && \
+    pip3 install --no-cache-dir importlib-metadata "pytest>=8.0.0" && \
     python3 -c "import glob, pathlib, site; sp = pathlib.Path(site.getsitepackages()[0]); paths = ['/opt/spark/python'] + sorted(glob.glob('/opt/spark/python/lib/py4j-*.zip')); (sp / 'spark.pth').write_text('\n'.join(paths) + '\n')"
 
-RUN { \
+RUN mkdir -p /opt/spark/conf && \
+    { \
       echo "spark.sql.extensions                     io.delta.sql.DeltaSparkSessionExtension"; \
       echo "spark.sql.catalog.spark_catalog          org.apache.spark.sql.delta.catalog.DeltaCatalog"; \
       echo "spark.sql.session.timeZone               UTC"; \
