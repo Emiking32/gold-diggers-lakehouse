@@ -1,110 +1,3 @@
-Conversation Log
-ano ulož mi to do docs/STUDENT_ASSIGNMENT.md
-
-Zadání pro studenty bylo uloženo do STUDENT_ASSIGNMENT.md.
-
-Git workflow: Commitnuto na větev docs/student-assignment (bb2f854), sloučeno (--no-ff) do develop (5fc8adf) a následně do main (55da716).
-Stav repozitáře: main je čistá (nothing to commit, working tree clean).
-Poznámka před rozdáním studentům: V sekci 2. Obtaining the Dataset stačí doplnit konkrétní <DATASET_DOWNLOAD_URL> nebo <COURSE_BUCKET> + <S3_OR_MINIO_ENDPOINT_URL> podle toho, kde jim předgenerovaný dataset nasdílíš.
-Jakou by si navrhoval flow nad tím zadáním. Co bych měl studentům ještě poskytnout, kam jim nasdílet data atp. 
-
-Tady je praktický návrh kompletní výukové flow, distribuce dat i toho, co studentům dát jako starter kit (a co jim naopak schovat), aby řešili skutečný data engineering a nezasekli se 2 týdny na rozbíhání Dockeru a JAR knihoven.
-
-1. Doporučená výuková / projektová flow (milníky)
-
-Nejlépe funguje iterativní flow rozdělená do 5 checkpointů (ať už na semestr, nebo na intenzivní blok):
-
-Fáze 0 — Setup & Data Discovery (Týden 1):
-Studenti naklonují tvůj Starter Repo (funkční docker-compose), stáhnou předgenerovaný dataset a v notebooku udělají rychlý data profiling.
-Výstup: Seznam všech nalezených DQ problémů v datech (sami musí objevit víkendové díry v fx_rates, EU data v invoices, VIP_CORP_001 skew, zombie timesheety i to, že záporné faktury jsou dobropisy, ne chyba).
-Fáze 1 — Bronze & Základní Airflow DAG (Týden 2–3):
-Napíšou parametrizovaný PySpark Bronze ingest (--batch-date YYYY-MM-DD) a zapojí ho do Airflow.
-Checkpoint: Opakované spuštění stejného dne (2026-01-05) nesmí vytvořit duplicity.
-Fáze 2 — Silver, Quarantine, SCD2 & Skew (Týden 4–6):
-Přidají DQ vrstvu s karanténou (silver_quarantine.*), dq_audit_results, SCD Type 2 nad employees, forward-fill fx_rates a vyřeší skew join u crm_events.
-Checkpoint: Screenshot ze Spark UI (před vs. po optimalizaci skew u VIP_CORP_001) + validace SCD2 historie.
-Fáze 3 — Gold Marts & Backfill (Týden 7–8):
-Postaví 5 Gold tabulek (včetně point-in-time mzdového nákladu ze SCD2 a gold_employee_churn_features) a pustí backfill přes celé období.
-Fáze 4 — Reporting + „Produkční“ Holdout test u obhajoby (Týden 9–10):
-Postaví jednoduchý dashboard (Streamlit / Superset / Metabase) nad Gold + dq_audit_results.
-Skvělý trik na obhajobu: Studentům dej na vývoj jen prvních 75 dní (2026-01-01 – 2026-03-16) a posledních 15 dní (2026-03-17 – 2026-03-31) uvolni až před odevzdáním / na obhajobě jako „nový inkrementální drop“. Hned uvidíš, jestli jim opravdu funguje orchestrace, SCD2, FX forward-fill i idempotence bez ručního hackování.
-2. Kam a jak studentům nasdílet data
-
-90denní medium dataset má zhruba 667k řádků (po zazipování cca desítky MB, velmi kompaktní). Výběr úložiště záleží na tom, jak moc chceš simulovat cloud:
-
-Varianta	Jak na to	Pro koho je nejlepší
-1. GitHub Releases (nejjednodušší a zdarma)	Vytvoř veřejný/interní repo jen pro zadání a nahraj landing_days_01_75.zip + landing_days_76_90.zip jako Release assets (limit je 2 GB/soubor). Studenti stahují jedním curl -L.	Doporučeno jako default — nulové náklady, žádné přihlašování, funguje na každé síti, přímý link do skriptu.
-2. Cloud Object Storage (Cloudflare R2 / AWS S3 / GCS — public read-only bucket)	Nahraj přímo přes corp-datagen --s3-bucket ... v Hive struktuře landing/.... Studenti si data buď stáhnou (aws s3 sync --no-sign-request), nebo je Spark čte rovnou přes s3a://.	Nejbližší praxi, ideální pokud učíš i práci se S3 / MinIO / s3a://. (Cloudflare R2 má 10 GB a egress zdarma.)
-3. Školní LMS (Moodle / Teams / SharePoint / vlastní MinIO server)	ZIP archiv v Moodle nebo read-only bucket na fakultním MinIO.	Pokud data nesmí ven mimo univerzitní síť. (Pozor: Moodle/SharePoint linky často vyžadují přihlášení a nejdou stáhnout přes prostý curl.)
-
-Praktický tip: Zabal do archivu i soubor MANIFEST.sha256 a rozděl archiv na:
-
-landing_dev_days_01_75.zip (pro vývoj)
-landing_holdout_days_76_90.zip (vydáš těsně před odevzdáním pro ověření inkrementálního běhu)
-(volitelně vygeneruj eNPS texty předem přes --llm-provider gemini nebo ollama s --llm-pool-size 250, ať mají studenti v employee_surveys.jsonl skutečně pestrý LLM text pro NLP bonus!)
-3. Co dalšího studentům poskytnout (a co schovat)
-Co jim určitě dej (Starter Kit)
-Starter repozitář s funkčním docker-compose.yml:
-Největší zabiják času v kurzech Spark + Airflow je rozchození kompatibilních verzí (PySpark + delta-spark JARy + hadoop-aws + Airflow + Java 17 na Windows/WSL2/Apple Silicon).
-Připrav jim hotový kostrový docker-compose.yml (např. Airflow + PySpark + Delta Lake + Streamlit/DuckDB, případně lokální MinIO), kde docker compose up naběhne do 2 minut a rovnou spustí 1 dummy Spark job.
-1 referenční mini-pipeline (např. jen tabulka clients):
-Ukázkový bronze_clients.py + silver_clients.py + 1 jednoduchý PySpark pytest test. Studenti okamžitě pochopí očekávanou strukturu kódu, konvenci partitioningu a logování, aniž bys jim prozradil řešení těžkých částí (SCD2, skew, FX LOCF).
-Skript na stažení & verifikaci dat (scripts/download_data.sh + .ps1):
-Ať všichni mají identickou cestu ./data/landing/... a nemusí řešit rozdíly mezi Windows a macOS/Linux.
-„Sanity Check“ kontrolní čísla pro prvních 7–14 dní:
-Krátká tabulka v docs/SANITY_CHECKS.md s orientačními hodnotami jen za první 2 týdny (např. "po očištění invoices za 2026-01-01..2026-01-14 byste měli mít cca X validních faktur, Y dobropisů a Z v karanténě"). Zabrání to masovým nedorozuměním v zadání.
-Přesný glosář KPI vzorců (1 stránka):
-Explicitní definice metrik, aby nevznikaly dohady u obhajoby:
-eNPS = (% Promoters [9–10]) − (% Detractors [0–6]) (škála -100 až +100)
-gross_margin_eur = net_revenue_eur − labor_cost_eur
-compa_ratio = hourly_rate_eur / median(hourly_rate_eur | department, seniority_level)
-Tie-breaker pravidlo pro near-duplicity (nebo jasná instrukce, že si ho mají zvolit a zdokumentovat).
-Co studentům NEPOSKYTOVAT
-Zdrojový kód tohoto repozitáře corp-datagen (zvlášť corruptor.py a hr.py):
-Kdyby viděli corruptor.py, nemuseli by data profilovat a hledat chyby sami.
-Kdyby viděli hr.py, znali by přesný vzorec churn modelu pro ML bonus.
-Drž si data_generator_company jako svůj soukromý učitelský repozitář a studentům publikuj oddělený Course Starter Repo (se STUDENT_ASSIGNMENT.md, docker-compose.yml, skriptem na stažení dat a sanity checky).
-4. Rychlý checklist před startem kurzu
-Vygenerovat finální data s --seed 42 (případně s --llm-provider gemini / ollama pro bohatší texty eNPS).
-Rozdělit vygenerovaný ./data/landing na dev (dny 1–75) a holdout (dny 76–90) + vygenerovat SHA256 kontrolní součty.
-Nahrát archivy na GitHub Releases / R2 / S3 a doplnit URL do STUDENT_ASSIGNMENT.md.
-Připravit lehký Student Starter Repo (docker-compose.yml, referenční clients job, download_data skript, SANITY_CHECKS.md).
-
-Pokud chceš, můžeme jako další krok rovnou připravit buď exportní skript na rozdělení datasetu (dev + holdout ZIP + SHA256), nebo vygenerovat kostru Student Starter Repa (docker-compose.yml pro Spark + Airflow + Delta + Streamlit).
-
-vygeneruješ mi to do separátního dokumentu?
-
-Dokument byl uložen do INSTRUCTOR_COURSE_FLOW.md.
-
-Git workflow: Commitnuto na větev docs/instructor-course-flow (26d6b47), sloučeno (--no-ff) do develop (a33f326) a následně do main (92f3ea3).
-Stav repozitáře: main je čistá (nothing to commit, working tree clean).
-Obsah dokumentu: Výuková flow po milnících (Fáze 0–4), rozdělení dat na dev (dny 1–75) a holdout (dny 76–90), možnosti sdílení dat (GitHub Releases, Cloudflare R2 / S3, školní LMS), obsah Student Starter Repa vs. privátní učitelské části, protokol obhajoby a předkurzový checklist.
-jsme teď na folderu který má na sebe navázaný git. kdybych chtěl po tobě připravit starter repo, dokážeš změnit folderu, založit v nad ní nové git repo zatim private později public. a přesunout práci tam do nové session?
-
-Přímo a na rovinu — tady je přesně to, co zvládnu a co musíš kliknout ty:
-
-Co umím vs. co neumím
-Přepnout aktivní složku v IDE nebo založit novou Antigravity session neumím — každá session je svázaná s otevřeným workspace (data_generator_company), takže přechod do nové složky a spuštění nové session musíš udělat v rozhraní ty.
-Vytvořit privátní repo přímo na GitHubu z terminálu teď nejde — na stroji není nainstalované GitHub CLI (gh), takže samotné prázdné Private repo založíš za 15 sekund v prohlížeči na GitHubu (a před začátkem kurzu ho jedním klikem přepneš v Settings → Danger Zone → Change visibility → Public).
-Lokální vedlejší složku (např. c:\Users\proch\Documents\python_projects\priprava vyuky 2026\spark_lakehouse_starter), v ní git init -b main a zkopírování STUDENT_ASSIGNMENT.md do ní vytvořit umím (s tvým schválením mimo sandbox).
-Nejčistší postup krok za krokem
-Na GitHubu založ nové Private repo (např. spark-lakehouse-starter, prázdné) a naklonuj ho vedle současného projektu:
-powershell
-cd "c:\Users\proch\Documents\python_projects\priprava vyuky 2026"
-git clone https://github.com/smoothgrinder/spark-lakehouse-starter.git
-(Případně tu novou složku můžeme jen lokálně inicializovat přes git init a GitHub remote připojit později.)
-Zkopíruj do něj jen zadání (ne generátor!) — konkrétně docs/STUDENT_ASSIGNMENT.md.
-Otevři spark-lakehouse-starter v Antigravity (nové okno / Open Folder) a spusť tam novou session.
-Předání kontextu: Jakmile v nové session odkážeš na docs/STUDENT_ASSIGNMENT.md (nebo vložíš krátký handoff prompt, který ti tu můžu připravit), nová session má 100 % přesnou specifikaci všech 10 tabulek, schémat i architektury bez rizika, že se omylem smíchá kód učitelského generátoru se studentským repem.
-Praktický tip na pořadí kroků
-
-Než tuhle session v data_generator_company zavřeš, dává velký smysl nejdřív udělat ještě jednu věc přímo tady (protože tady je generátor):
-
-Vygenerovat finální data (--seed 42) a připravit malý balíčkovací skript, který vyrobí landing_dev_days_01_75.zip, landing_holdout_days_76_90.zip, MANIFEST.sha256 a automaticky spočítá přesná čísla do SANITY_CHECKS.md (za prvních 14 dní).
-A pak se čistě přepnout do nového privátního spark-lakehouse-starter repa a postavit tam docker-compose.yml + referenční clients pipeline + download skripty.
-
-Chceš nejdřív tady udělat ten exportní balíčkovač + SANITY_CHECKS.md, nebo mám rovnou připravit lokální vedlejší složku spark-lakehouse-starter a handoff prompt pro novou session?
-
 # Course Project Assignment: Enterprise Lakehouse & Medallion Pipeline with Apache Spark
 
 ## 1. Scenario & Objective
@@ -133,14 +26,12 @@ A pre-generated 90-day corporate dataset (`2026-01-01` to `2026-03-31`, ~667,000
 mkdir -p ./data/landing
 curl -L "<DATASET_DOWNLOAD_URL>" -o ./data/landing_dataset.zip
 unzip ./data/landing_dataset.zip -d ./data/landing
-
 ```
 
 ### Option B — Sync from Course S3 / MinIO Bucket
 ```bash
 aws s3 sync s3://<COURSE_BUCKET>/landing ./data/landing \
   --endpoint-url "<S3_OR_MINIO_ENDPOINT_URL>"
-
 ```
 
 ### Verify Your Download
@@ -148,7 +39,6 @@ After downloading, confirm that `./data/landing` contains all 10 source folders 
 
 ```bash
 ls -la ./data/landing
-
 ```
 
 - **Do not commit the downloaded `./data/` folder to Git** — include `data/` in your `.gitignore` and provide a script/Make target or Airflow ingestion task that pulls or reads from the configured landing path.
@@ -172,12 +62,203 @@ data/landing/
 ├── expenses/date=YYYY-MM-DD/part-000.csv
 ├── crm_events/date=YYYY-MM-DD/part-000.jsonl
 └── employee_surveys/date=YYYY-MM-DD/part-000.jsonl
-
 ```
 
 ### 3.1 Business / CRM Domain
 
 | Dataset | Format & Load Type | Columns & Semantics |
-Gemini 4 Carbon now available!
+| :--- | :--- | :--- |
+| **`clients`** | CSV (Full Load) | `client_id` (`string`, PK; includes `VIP_CORP_001` and `CLI_0002`..), `client_name` (`string`), `tier` (`Standard`, `Silver`, `Gold`, `Enterprise`). |
+| **`projects`** | CSV (Full Load) | `project_id` (`string`, PK; `PRJ_0001`..), `client_id` (`string`, FK → `clients`), `budget_eur` (`double`), `status` (`Planned`, `Active`, `Completed`, `OnHold`). |
+| **`crm_events`** | JSONL (Daily Batch) | `event_id` (`string`), `client_id` (`string`, FK → `clients`), `event_type` (`page_view`, `support_ticket`, `contract_renewal`, `api_call`, `meeting_logged`), `timestamp` (`ISO-8601 UTC`), `payload` (`object` — **nested JSON whose schema varies by `event_type`**). |
 
-Both Carbon and Argon are now included as part of the entire Gemini entitlement, so you can use them for much longer.
+> **Operational Note (Skew):** One enterprise account (`VIP_CORP_001`) accounts for roughly **45% of all CRM events**, introducing severe key skew during distributed joins and wide aggregations.
+
+### 3.2 Human Resources Domain
+
+| Dataset | Format & Load Type | Columns & Semantics |
+| :--- | :--- | :--- |
+| **`employees`** | CSV (Daily Full Snapshot) | `emp_id` (`string`), `full_name` (`string`), `department` (`Engineering`, `Data`, `Consulting`, `Sales`, `Finance`, `Operations`), `role` (`string`), `seniority_level` (`Junior`, `Mid`, `Senior`, `Lead`, `Principal`), `hourly_rate_eur` (`double`), `hire_date` (`date`), `last_promotion_date` (`date`), `work_mode` (`Remote`, `Hybrid`, `Onsite`), `distance_km` (`double`), `manager_id` (`string`, nullable FK → `emp_id`), `is_active` (`boolean`), `termination_date` (`date`, nullable), `churn_type` (`voluntary` \| `involuntary`, nullable), `snapshot_date` (`date`). |
+| **`timesheets`** | Parquet (Daily Batch) | `ts_id` (`string`), `emp_id` (`string`, FK → `employees`), `project_id` (`string`, nullable FK → `projects`), `work_date` (`date`), `hours` (`double`). |
+
+> **Operational Notes (HR):**
+> - Roughly 10% of employees change `department`, `role`, and/or `hourly_rate_eur` during the quarter, requiring SCD Type 2 tracking for accurate historical labor cost attribution.
+> - Employee departures occur throughout the quarter (`is_active` transitions to `false` and `termination_date` is populated from the departure date onward).
+
+### 3.3 Employee eNPS Surveys Domain
+
+| Dataset | Format & Load Type | Columns & Semantics |
+| :--- | :--- | :--- |
+| **`survey_questions`** | JSON (Full Load Catalog) | Array of 10 question definitions (`question_id`, `dimension`, `scale_min`, `scale_max`, `prompt_text`): `Q01` (`enps`, `0–10`) plus 9 Likert (`1–5`) drivers: `Q02` (`work_life_balance`), `Q03` (`compensation_fairness`), `Q04` (`manager_support`), `Q05` (`career_growth`), `Q06` (`role_clarity`), `Q07` (`team_collaboration`), `Q08` (`tools_and_processes`), `Q09` (`leadership_vision`), `Q10` (`recognition`). |
+| **`employee_surveys`** | JSONL (Daily Pulse Batches) | `survey_id` (`string`), `emp_id` (`string`), `submitted_at` (`ISO-8601 UTC`), `enps_score` (`int`, corresponds to `Q01`), `overall_comment` (`string`), `answers` (`array<struct<question_id, dimension, numeric_score, written_answer>>` — 10 entries per submission). |
+
+### 3.4 Finance Domain
+
+| Dataset | Format & Load Type | Columns & Semantics |
+| :--- | :--- | :--- |
+| **`fx_rates`** | JSON (Daily, **Weekdays Only**) | JSON array of 6 currency pairs (`EUR`, `USD`, `CZK`): `rate_date` (`string`), `currency_from`, `currency_to`, `rate` (`double`). **No files are delivered for Saturdays and Sundays.** |
+| **`invoices`** | JSONL (Daily Batch) | `inv_id` (`string`), `client_id` (`string`), `project_id` (`string`), `amount` (`double`), `currency` (`EUR` \| `USD` \| `CZK`), `issued_at` (`string`), `paid_at` (`string`, nullable — open/unpaid invoices are `NULL`). |
+| **`expenses`** | CSV (Daily Batch) | `exp_id` (`string`), `department` (`string`), `category` (`Cloud Infrastructure`, `Software Licenses`, `Travel & Lodging`, `Training`, `Hardware`, `Office & Events`, `Subcontractors`), `amount` (`double`), `currency` (`EUR` \| `USD` \| `CZK`), `expense_date` (`date`). |
+
+### 3.5 Known Upstream Data Quality Issues
+
+As in real enterprise ingestion environments, the raw Landing Zone files contain anomalies that your pipelines must detect, log, and handle properly:
+- **Exact & near duplicates** in `timesheets`, `expenses`, and `employee_surveys`.
+- **Inconsistent date formats** in `invoices` (mix of ISO `YYYY-MM-DD` and European `DD.MM.YYYY` strings).
+- **Missing & orphan foreign keys**: `NULL` `project_id` in `timesheets`, and invoices referencing unknown `project_id` values (`PRJ_ORPHAN_*`).
+- **Domain anomalies**: `timesheets` with `hours <= 0` or `hours > 24`; post-termination timesheet entries (`work_date >= termination_date`); `employee_surveys` with out-of-range scores (`-1`, `11`) or empty/`NULL` `written_answer`.
+- **Valid business edge cases (do NOT discard as errors)**: Negative `amount` values in `invoices` represent **credit notes**; unpaid invoices legitimately have `paid_at = NULL`; missing weekend `fx_rates` must be forward-filled (LOCF) from the most recent business day.
+
+---
+
+## 4. Technical Requirements
+
+### 4.1 Core Technology Stack
+- **Processing Engine:** Apache Spark (`PySpark 3.5+`).
+- **Storage Format:** **Delta Lake** (recommended) or Apache Iceberg / partitioned Parquet for `Bronze`, `Silver`, and `Gold` zones.
+- **Orchestration:** **Apache Airflow** (recommended; Dagster or Prefect accepted if clearly justified).
+- **Data Quality:** Reusable PySpark DQ validation layer, **Great Expectations**, **Soda Core**, or **PyDeequ**, persisting structured audit logs.
+- **Reporting Layer:** **Streamlit**, **Apache Superset**, **Metabase**, or **DuckDB + BI/Notebook Dashboard** reading strictly from Gold & DQ audit tables.
+
+---
+
+### 4.2 Medallion Layer Specifications
+
+#### A. Bronze Layer (Raw Ingestion)
+- Ingest all 10 Landing Zone datasets incrementally (by `batch_date` for daily tables; overwrite/versioned snapshot for full-load tables).
+- Preserve raw payloads with **zero lossy transformations** (keep raw date strings in `invoices`, keep raw nested JSON payloads in `crm_events` and `employee_surveys`).
+- Append standardized technical metadata columns to every Bronze table:
+  - `_batch_date` (`date`)
+  - `_ingested_at` (`timestamp`)
+  - `_source_file` (`string`)
+- Must be **idempotent**: re-running a given `batch_date` must not duplicate records in Bronze.
+
+#### B. Silver Layer (Cleansed, Conformed & Quarantined)
+Implement a **Quarantine pattern**: invalid records must be routed to `silver_quarantine.<table_name>` with a `dq_reasons` (`array<string>`) column and `_batch_date`, rather than silently dropped.
+
+Required transformations:
+1. **`silver_employees_scd2` (SCD Type 2):**
+   - Build Slowly Changing Dimension Type 2 history (`valid_from`, `valid_to`, `is_current`) tracking changes in `department`, `role`, `hourly_rate_eur`, `is_active`, `termination_date`, and `churn_type`.
+2. **`silver_timesheets`:**
+   - Deduplicate exact and near-duplicates by `ts_id` (document your deterministic tie-breaker rule).
+   - Quarantine rows where `project_id IS NULL`, `hours <= 0`, `hours > 24`, or `work_date >= employee.termination_date`.
+3. **`silver_fx_rates_daily`:**
+   - Generate a complete calendar spine (`start_date`..`end_date`) for all currency pairs and forward-fill missing weekend/holiday rates using Spark window functions (`last(..., ignorenulls=True)`).
+4. **`silver_invoices`:**
+   - Parse both `YYYY-MM-DD` and `DD.MM.YYYY` into canonical `DATE` columns (`issued_date`, `paid_date`).
+   - Quarantine records failing referential integrity against `silver_projects` (`left_anti` check).
+   - Retain negative amounts as valid **credit notes** (`is_credit_note: boolean`, `net_amount_eur`).
+   - Join with `silver_fx_rates_daily` to compute `amount_eur` (EUR rows use rate `1.0`).
+5. **`silver_expenses`:**
+   - Deduplicate exact and near-duplicates by `exp_id` and compute `amount_eur` via `silver_fx_rates_daily`.
+6. **`silver_crm_events`:**
+   - Parse `timestamp` to UTC `TIMESTAMP` and extract key structured attributes from the polymorphic `payload` JSON (retaining `payload_raw` or typed struct fields per `event_type`).
+   - Join/enrich with `silver_clients` using an explicit **skew-handling strategy** (e.g., Broadcast Join, Spark AQE skew join optimization, or key salting) and include **Spark UI evidence** (screenshots or metrics) comparing skewed vs. optimized execution.
+7. **`silver_survey_responses` & `silver_survey_answers`:**
+   - Deduplicate by `survey_id`.
+   - `explode()` the 10-element `answers` array and join with `survey_questions` metadata.
+   - Quarantine answers violating `[scale_min, scale_max]` bounds; handle null/blank `written_answer` cleanly (flag `has_written_comment`).
+   - Derive `enps_category` (`Promoter`: `9–10`, `Passive`: `7–8`, `Detractor`: `0–6`).
+
+#### C. Gold Layer (Analytics Marts & ML Feature Table)
+Create at least the following **5 Gold tables**:
+
+1. **`gold_project_profitability`:**
+   - Grain: `(project_id, year_month)` (and overall project summary view).
+   - Metrics: `invoiced_revenue_eur`, `credit_notes_eur`, `net_revenue_eur`, `billable_hours`, `labor_cost_eur` (**must join `silver_timesheets` with `silver_employees_scd2` using the employee's point-in-time `hourly_rate_eur` valid on `work_date`**), `gross_margin_eur`, `gross_margin_pct`, `budget_utilization_pct`.
+2. **`gold_department_finance`:**
+   - Grain: `(department, category, year_month)`.
+   - Metrics: `total_expense_eur`, `expense_count`, departmental headcount & billable utilization.
+3. **`gold_client_engagement`:**
+   - Grain: `(client_id, client_tier, event_type, event_date)`.
+   - Metrics: `event_count`, `avg_api_latency_ms`, `critical_ticket_count`, `pipeline_arr_delta_eur`.
+4. **`gold_hr_enps_analytics`:**
+   - Grain: `(department, seniority_level, work_mode, survey_wave)`.
+   - Metrics: `respondent_count`, `enps_score` (`% Promoters − % Detractors`), average score per driver (`Q02`–`Q10`), `voluntary_attrition_rate`, `involuntary_attrition_rate`.
+5. **`gold_employee_churn_features` (Point-in-Time ML Feature Table):**
+   - Grain: `emp_id` (leak-free snapshot cut at day 17 / Wave 1 to predict subsequent churn).
+   - Features: `compa_ratio` (employee hourly rate ÷ `(department, seniority_level)` peer median), `tenure_years`, `months_since_promotion`, `work_mode`, `distance_km`, `manager_id`, early average daily hours & weekend work counts from `timesheets`, Wave 1 `enps_score` & `Q02–Q10` numeric scores, and future target `churned_within_quarter` (`0/1`).
+
+---
+
+### 4.3 Data Quality (DQ) Checks Framework
+
+Implement automated DQ gates integrated into the orchestration flow and persist all check executions into a **`dq_audit_results`** table (`run_id`, `batch_date`, `layer`, `table_name`, `check_name`, `severity`, `status`, `failed_count`, `total_count`, `checked_at`):
+
+- **Hard Checks (`severity = ERROR` — must fail the task/pipeline):**
+  - Expected schema & non-null primary keys in Silver/Gold.
+  - Non-empty daily partitions for mandatory tables (properly accounting for the absence of weekend `fx_rates`).
+  - Uniqueness of `(emp_id, valid_from)` in `silver_employees_scd2` with no overlapping validity intervals.
+  - Zero `NULL` EUR amounts after FX conversion (`silver_invoices`, `silver_expenses`).
+- **Soft Checks (`severity = WARN` — log metric, quarantine bad rows, continue pipeline):**
+  - Quarantine ratio thresholds (e.g., warn if > 8% of rows are quarantined in a single batch).
+  - Orphan invoice rate, duplicate rate, zombie timesheet count, missing written survey comments.
+
+---
+
+### 4.4 Orchestration Requirements
+
+Build an orchestrated workflow (e.g., **Apache Airflow DAG**) with:
+- **Parameterized daily execution** (`batch_date`, e.g., Airflow `{{ ds }}`) supporting both scheduled daily runs and multi-day **backfills**.
+- **Clear task dependency graph:**
+  ```text
+  sense_landing_files
+      └──▶ bronze_ingest (parallel per domain)
+               └──▶ dq_bronze_gate
+                        └──▶ silver_transform (fx & dimensions → facts & surveys)
+                                 └──▶ dq_silver_gate
+                                          └──▶ gold_marts (parallel)
+                                                   └──▶ dq_gold_gate
+                                                            └──▶ refresh_reporting_layer
+  ```
+- **Idempotency & Recovery:** Running the same `batch_date` twice produces identical Bronze/Silver/Gold/DQ tables without duplicate rows.
+- **Retries & Logging:** Configure task retries, execution timeouts, and failure callback logging.
+
+---
+
+### 4.5 Simple Reporting Layer
+
+Build a clean, lightweight reporting application on top of **Gold** and **`dq_audit_results`** (e.g., a **Streamlit** multi-tab app using DuckDB/Spark SQL, or Superset/Metabase dashboard). It must include **4 views**:
+
+1. **Finance & Project Profitability:** Net revenue vs. credit notes (EUR), labor cost, top/bottom margin projects, budget burn, and departmental expense breakdown.
+2. **HR, Attrition & eNPS Pulse:** Company & departmental eNPS score, 10-question driver breakdown (`Q02`–`Q10`), attrition breakdown by department / `work_mode` / `compa_ratio` bucket, and filterable written employee comments.
+3. **CRM Client Engagement:** Event volume by client tier and `event_type`, `VIP_CORP_001` traffic share, API latency, and critical support ticket trends.
+4. **Pipeline & Data Quality Health:** Daily rows ingested vs. quarantined, breakdown of DQ failures by rule & table, and pass/warn/fail run history from `dq_audit_results`.
+
+---
+
+## 5. Deliverables & Repository Structure
+
+Submit a Git repository containing:
+
+```text
+project-root/
+├── docker-compose.yml          # Reproducible local stack (Spark, Airflow, Reporting UI)
+├── scripts/
+│   └── download_data.sh        # Automated script to download & verify the Landing Zone
+├── dags/                       # Orchestration DAG definitions
+├── spark_jobs/
+│   ├── bronze/
+│   ├── silver/
+│   └── gold/
+├── dq/                         # Reusable DQ checks & audit logger
+├── reporting/                  # Streamlit / BI dashboard code & SQL views
+├── tests/                      # Unit & integration tests (PySpark + DQ rules)
+├── docs/
+│   ├── architecture.md         # Architecture diagram, SCD2 design, Spark UI skew analysis
+│   └── runbook.md              # How to download data, run, backfill, and troubleshoot
+└── README.md                   # Quickstart instructions
+```
+
+---
+
+## 6. Evaluation Rubric (100 Points + 10 Bonus)
+
+| Category | Weight | Key Criteria |
+| :--- | :---: | :--- |
+| **PySpark Medallion Pipelines (Bronze / Silver / Gold)** | **35 pts** | Correct schemas, true SCD Type 2 & point-in-time cost joins, weekend FX forward-fill, credit note handling, skew optimization with Spark UI proof. |
+| **Data Quality Framework & Quarantine** | **20 pts** | Comprehensive hard/soft rules, zero silent data loss, quarantine tables with failure reasons, persisted `dq_audit_results`. |
+| **Orchestration & Idempotency** | **20 pts** | Clean Airflow/orchestrator DAG, parameterized `batch_date` runs, verified backfill & re-run idempotency, retry/failure handling. |
+| **Reporting Layer** | **15 pts** | Reads strictly from Gold/DQ tables, all 4 required business & DQ views functional, clear KPI definitions and filters. |
+| **Code Quality, Tests & Documentation** | **10 pts** | Modular code, PySpark unit tests, automated download script, reproducible setup (`docker-compose` / `uv`), clear architecture notes. |
+| **Bonus — Predictive Churn / NLP Analytics** | **+10 pts** | Train a Spark MLlib or scikit-learn churn model on `gold_employee_churn_features` (report ROC-AUC & top feature importances) **or** run sentiment/topic extraction on `written_answer` texts and surface insights in the HR dashboard. |
