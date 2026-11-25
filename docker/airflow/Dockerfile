@@ -39,11 +39,12 @@ RUN PYSPARK_DIR="$(python -c 'import pathlib, pyspark; print(pathlib.Path(pyspar
       echo "spark.sql.catalog.spark_catalog          org.apache.spark.sql.delta.catalog.DeltaCatalog"; \
       echo "spark.sql.session.timeZone               UTC"; \
       echo "spark.executorEnv.PYTHONPATH             /opt/workspace"; \
-    } > "${PYSPARK_DIR}/conf/spark-defaults.conf"
+    } > "${PYSPARK_DIR}/conf/spark-defaults.conf" && \
+    echo "${PYSPARK_DIR}" > /tmp/pyspark_dir
 
 USER root
 
-RUN ln -s "$(python -c 'import pathlib, pyspark; print(pathlib.Path(pyspark.__file__).parent)')" /opt/spark
+RUN ln -s "$(cat /tmp/pyspark_dir)" /opt/spark && rm -f /tmp/pyspark_dir
 
 USER airflow
 

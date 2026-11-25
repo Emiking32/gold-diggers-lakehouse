@@ -1,4 +1,5 @@
 x-spark-volumes: &spark-volumes
+  - ./pyproject.toml:/opt/workspace/pyproject.toml:ro
   - ./spark_jobs:/opt/workspace/spark_jobs
   - ./dq:/opt/workspace/dq
   - ./data:/opt/workspace/data
@@ -167,6 +168,7 @@ services:
       - "8501:8501"
     environment:
       LAKEHOUSE_ROOT: /opt/workspace/lakehouse
+      PYTHONPATH: /opt/workspace
     volumes:
       - ./reporting:/opt/workspace/reporting
       - ./lakehouse:/opt/workspace/lakehouse:ro

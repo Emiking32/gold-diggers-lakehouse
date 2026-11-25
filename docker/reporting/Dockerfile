@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir \
 RUN python -c "import duckdb; duckdb.sql('INSTALL delta; LOAD delta;')"
 
 WORKDIR /opt/workspace
+ENV PYTHONPATH=/opt/workspace
 EXPOSE 8501
 
 CMD ["streamlit", "run", "reporting/app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
