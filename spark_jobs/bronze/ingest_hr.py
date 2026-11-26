@@ -1,17 +1,4 @@
-"""Bronze ingestion skeleton for HR domain (`employees` CSV and `timesheets` Parquet).
-
-TODO (Student Deliverable):
-1. Read daily Hive-partitioned files for `batch_date`:
-   - `<landing_root>/employees/date=<batch_date>/part-000.csv`
-   - `<landing_root>/timesheets/date=<batch_date>/part-000.parquet`
-2. Preserve raw values with zero lossy transformations.
-3. Append `_batch_date`, `_ingested_at`, `_source_file`.
-4. Write idempotently partitioned by `_batch_date` (replace only `batch_date`
-   via `replaceWhere` or Delta `delete` + `append`) to `bronze/employees` and
-   `bronze/timesheets`.
-
-Reference: `docs/STUDENT_ASSIGNMENT.md` (Sections 3.2, 4.2.A) and `docs/SANITY_CHECKS.md`.
-"""
+"""Load daily employee snapshots and timesheet batches into Bronze Delta."""
 
 from __future__ import annotations
 
@@ -19,7 +6,30 @@ import argparse
 
 from pyspark.sql import SparkSession
 
-from spark_jobs.common.spark_session import get_spark_session
+from spark_jobs.bronze._ingestion import batch_day, raw_strings, read_batch, write_bronze
+from spark_jobs.common.spark_session import (
+    get_lakehouse_root,
+    get_landing_root,
+    get_spark_session,
+)
+
+EMPLOYEES_RAW_SCHEMA = raw_strings(
+    "emp_id",
+    "full_name",
+    "department",
+    "role",
+    "seniority_level",
+    "hourly_rate_eur",
+    "hire_date",
+    "last_promotion_date",
+    "work_mode",
+    "distance_km",
+    "manager_id",
+    "is_active",
+    "termination_date",
+    "churn_type",
+    "snapshot_date",
+)
 
 
 def run(
@@ -28,8 +38,26 @@ def run(
     landing_root: str | None = None,
     lakehouse_root: str | None = None,
 ) -> None:
-    """TODO: Implement Bronze ingestion for `employees` and `timesheets`."""
-    raise NotImplementedError("TODO: Implement Bronze HR ingestion for employees and timesheets.")
+    """Replace one day's HR partitions, preserving duplicates and raw values."""
+    day = batch_day(batch_date)
+    landing = get_landing_root(landing_root)
+    lakehouse = get_lakehouse_root(lakehouse_root)
+    employees = read_batch(
+        spark.read.format("csv")
+        .option("header", True)
+        .option("enforceSchema", False)
+        .option("mode", "FAILFAST")
+        .schema(EMPLOYEES_RAW_SCHEMA),
+        landing,
+        "employees",
+        day,
+        "part-000.csv",
+    )
+    timesheets = read_batch(
+        spark.read.format("parquet"), landing, "timesheets", day, "part-000.parquet"
+    )
+    write_bronze(employees, lakehouse, "employees", day)
+    write_bronze(timesheets, lakehouse, "timesheets", day)
 
 
 def parse_args() -> argparse.Namespace:
