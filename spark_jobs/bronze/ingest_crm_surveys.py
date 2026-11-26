@@ -50,7 +50,9 @@ def run(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Ingest CRM and survey datasets into Bronze Delta.")
+    parser = argparse.ArgumentParser(
+        description="Ingest CRM and survey datasets into Bronze Delta."
+    )
     parser.add_argument("--batch-date", required=True, help="Logical batch date (YYYY-MM-DD).")
     parser.add_argument("--landing-root", default=None, help="Override Landing Zone path.")
     parser.add_argument("--lakehouse-root", default=None, help="Override Lakehouse root path.")
