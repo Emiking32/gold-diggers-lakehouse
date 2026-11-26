@@ -1,17 +1,4 @@
-"""Bronze ingestion skeleton for `crm_events` and `employee_surveys` (JSONL batches).
-
-TODO (Student Deliverable):
-1. Read `<landing_root>/crm_events/date=<batch_date>/part-000.jsonl`, preserving
-   the polymorphic `payload` JSON untouched (read as raw string or map/struct
-   without dropping event-specific fields).
-2. Read `<landing_root>/employee_surveys/date=<batch_date>/part-000.jsonl`
-   (note: pulse surveys only drop on survey wave dates, e.g. Days 9-16 for Wave 1;
-   handle dates without survey drops gracefully!).
-3. Append `_batch_date`, `_ingested_at`, `_source_file` and write idempotently
-   partitioned by `_batch_date` to `bronze/crm_events` and `bronze/employee_surveys`.
-
-Reference: `docs/STUDENT_ASSIGNMENT.md` (Sections 3.1, 3.3, 4.2.A) and `docs/SANITY_CHECKS.md`.
-"""
+"""Load daily CRM events and employee survey responses into Bronze Delta."""
 
 from __future__ import annotations
 
@@ -19,7 +6,18 @@ import argparse
 
 from pyspark.sql import SparkSession
 
-from spark_jobs.common.spark_session import get_spark_session
+from spark_jobs.bronze._ingestion import batch_day, raw_strings, read_batch, write_bronze
+from spark_jobs.common.spark_session import (
+    get_lakehouse_root,
+    get_landing_root,
+    get_spark_session,
+)
+
+# Retain nested objects and arrays as JSON text so Silver can choose how to parse them.
+CRM_EVENTS_RAW_SCHEMA = raw_strings("event_id", "client_id", "event_type", "timestamp", "payload")
+EMPLOYEE_SURVEYS_RAW_SCHEMA = raw_strings(
+    "survey_id", "emp_id", "submitted_at", "enps_score", "overall_comment", "answers"
+)
 
 
 def run(
@@ -28,12 +26,33 @@ def run(
     landing_root: str | None = None,
     lakehouse_root: str | None = None,
 ) -> None:
-    """TODO: Implement Bronze ingestion for `crm_events` and `employee_surveys`."""
-    raise NotImplementedError("TODO: Implement Bronze CRM & Surveys ingestion.")
+    """Replace the requested day, allowing days without a survey delivery."""
+    day = batch_day(batch_date)
+    landing = get_landing_root(landing_root)
+    lakehouse = get_lakehouse_root(lakehouse_root)
+    events = read_batch(
+        spark.read.format("json").option("mode", "FAILFAST").schema(CRM_EVENTS_RAW_SCHEMA),
+        landing,
+        "crm_events",
+        day,
+        "part-000.jsonl",
+    )
+    surveys = read_batch(
+        spark.read.format("json").option("mode", "FAILFAST").schema(EMPLOYEE_SURVEYS_RAW_SCHEMA),
+        landing,
+        "employee_surveys",
+        day,
+        "part-000.jsonl",
+        optional=True,
+    )
+    write_bronze(events, lakehouse, "crm_events", day)
+    write_bronze(surveys, lakehouse, "employee_surveys", day)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Ingest CRM & Survey datasets into Bronze Delta.")
+    parser = argparse.ArgumentParser(
+        description="Ingest CRM and survey datasets into Bronze Delta."
+    )
     parser.add_argument("--batch-date", required=True, help="Logical batch date (YYYY-MM-DD).")
     parser.add_argument("--landing-root", default=None, help="Override Landing Zone path.")
     parser.add_argument("--lakehouse-root", default=None, help="Override Lakehouse root path.")
